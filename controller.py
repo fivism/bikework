@@ -33,7 +33,6 @@ def plot_base(m):
     m.drawmapboundary(fill_color='#46bcec')
     m.fillcontinents(color='#f2f2f2', lake_color='#46bcec')
     m.drawcoastlines()
-    plt.title('bysykkel flow')
 
 
 def read_stations(filename):
@@ -57,34 +56,71 @@ def plot_stations(sta_dict, m):
     """
     for st in sta_dict:
         x, y = float(sta_dict[st][4]), float(sta_dict[st][3])
-        size = (float(sta_dict[st][2]) / 12.0) ** 2
+        size = (float(sta_dict[st][2]) / 13.0) ** 2 + 1
         m.plot(x, y, marker='o',
                markersize=size, color='#cccccc', alpha=0.9, latlon=True)
 
 
-# def plot_area(pos):
-#     count = new_areas.loc[new_areas.pos == pos]['count']
-#     x, y = m(pos[1], pos[0])
-#     size = (count/1000) ** 2 + 3
-#     m.plot(x, y, 'o', markersize=size, color='#cccccc', alpha=0.8)
+def plot_paths(sta_dict, m, starts, ends):
+    """
+    Void func that for now, takes in sets of lats and longs and draws these routes
+    """
+    for trip in range(0, len(starts)):
+        stx, sty = sta_dict[starts[trip]][4], sta_dict[starts[trip]][3]
+        endx, endy = sta_dict[ends[trip]][4], sta_dict[ends[trip]][3]
+        m.drawgreatcircle(float(stx), float(sty),
+                          float(endx), float(endy),
+                          linewidth=1.5, color='pink')
 
-#     new_areas.pos.apply(plot_area)
 
-m = Basemap(resolution='l',
+def plot_trips(sta_dict, trips, starts, ends):
+    """
+    Func takes station_dictionary
+    List of active trips
+    """
+    for trip in range(0, len(starts)):
+        stx, sty = sta_dict[starts[trip]][4], sta_dict[starts[trip]][3]
+        endx, endy = sta_dict[ends[trip]][4], sta_dict[ends[trip]][3]
+        m.drawgreatcircle(float(stx), float(sty),
+                          float(endx), float(endy),
+                          linewidth=1.5, color='pink')
+
+
+# Initialize 'm' basemap obj
+m = Basemap(resolution='c',
             projection='merc',
             lat_0=59.922, lon_0=10.736,
             llcrnrlon=10.65, llcrnrlat=59.887, urcrnrlon=10.8183, urcrnrlat=59.9558)
 
+# color in basemap
 plot_base(m)
+
+# read stations into a hashed dict because we will be referring to them v often
 station_dict = read_stations("test.csv")
+
+# plot stations as fixed, scaled points on basemap obj
 plot_stations(station_dict, m)
 
-plt.savefig('out.png')
-# plt.show()
+# draw mini trips list
+starts = ['229', '232', '226', '394', '201']
+ends = ['262', '419', '342', '402', '201']
+plot_paths(station_dict, m, starts, ends)
 
-# Demo dict TODO
-# print(station_dict['158'][2])
+# generate plot title
+plt.title('bysykkel')
 
+# plt.gcpoints() -- calculate n points where n is # of minutes of trip
+
+# OFFSETS ARE INTERESTING HERE
+# test line perhaps x and y are gyldige trips
+# plt.quiver(x[points], y[points],
+#            u10[points], v10[points], speed[points],
+#            cmap=plt.cm.autumn)
+
+
+# plt.savefig('out.png')
+
+plt.show()
 
 # def generate_objs(trips_data):
 #     """

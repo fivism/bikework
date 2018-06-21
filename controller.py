@@ -2,17 +2,19 @@
 Controller reads through cleaned trip references and generates the
 minute-by-minute renderings of all trips in progress
 """
-import time
+# import time
 import matplotlib.pyplot as plt
 import matplotlib.cm
 from mpl_toolkits.basemap import Basemap
 from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
 from matplotlib.colors import Normalize
-#import trip_obj
+from trip_obj import Trip
 import pandas as pd
 import sys
 import csv
+from dateutil import parser
+import dateutil.relativedelta as tdelta
 
 # if len(sys.argv) < 3:
 #     sys.exit('Usage: %s trip_csv_file output' % sys.argv[0])
@@ -21,24 +23,48 @@ import csv
 # OUTPUT_NAME = sys.argv[2]
 
 # trip_df = pandas.read_csv(TRIP_FILE)
-
-fig, ax = plt.subplots(figsize=(10, 20))
-
 # center 59.922056, 10.736092
 # for now using DublinCore bounding box of Oslo with limits:
 # westlimit=10.649384; southlimit=59.886967; eastlimit=10.818299; northlimit=59.955795
 
 
-def plot_base(m):
-    m.drawmapboundary(fill_color='#46bcec')
-    m.fillcontinents(color='#f2f2f2', lake_color='#46bcec')
-    m.drawcoastlines()
+def find_trips(filename, target_time):
+    """
+    Iterates through trip data CSV files for trips that are alive at
+    target_time. Returns list of initialized *trip_objs*
+    """
+    trip_list = []
+
+    def init_trip(csv_line):
+        """
+        Void function that dissects trip line and
+        fully initializes a new trip_obj
+        and returns the obj
+        """
+        new_trip = Trip(parser.parse(csv_line[1]),
+                        parser.parse(csv_line[3]),
+                        csv_line[0],
+                        csv_line[2])
+        return new_trip
+
+    with open(filename, mode='r') as infile:
+        infile_noheader = infile.readlines()[1:]
+        reader = csv.reader(infile_noheader)
+        for row in reader:
+            if (target_time < parser.parse(row[1])):
+                # search time is before this entry
+                break
+            elif (target_time < parser.parse(row[3]) and
+                  (target_time > parser.parse(row[1]))):
+                trip_list.append(init_trip(row))
+
+    return trip_list
 
 
 def read_stations(filename):
     """
     This should eventually call stationExtractor for newest list
-    Returns dict of station IDs linked to relevant data bits so that 
+    Returns dict of station IDs linked to relevant data bits so that
     we skip row matching
     """
     with open(filename, mode='r') as infile:
@@ -47,6 +73,12 @@ def read_stations(filename):
         out_dict = {rows[0]: rows[1:6] for rows in reader}
         return out_dict
     # station_dict = pd.read_csv(filename)
+
+
+def plot_base(m):
+    m.drawmapboundary(fill_color='#46bcec')
+    m.fillcontinents(color='#f2f2f2', lake_color='#46bcec')
+    m.drawcoastlines()
 
 
 def plot_stations(sta_dict, m):
@@ -61,7 +93,47 @@ def plot_stations(sta_dict, m):
                markersize=size, color='#cccccc', alpha=0.9, latlon=True)
 
 
-def plot_paths(sta_dict, m, starts, ends):
+def plot_paths(sta_dict, m, trips, target_time):
+    """
+    Examines trip start and stop stations and generates
+    straight line paths + 
+    interpolated position given target_time
+    """
+    def calc_pos(trip, startpt, endpt):
+        """
+        Takes trip object + start and end (x, y) tuples 
+        and generates n-minutes of points 
+        and returns the "current" point
+        """
+        n = tdelta.relativedelta(
+            trip.end_time, trip.start_time).minutes  # total trip time in mins
+        print(n)
+        # mins of trip elapsed
+        x = tdelta.relativedelta(target_time, trip.start_time).minutes
+        print(x)
+        pt_tuples = m.gcpoints(startpt[0], startpt[1], endpt[0], endpt[1], n)
+        print(pt_tuples)
+        return (pt_tuples[0][x], pt_tuples[1][x])
+
+    for trip in trips:
+        startpt = (float(sta_dict[trip.start_st][4]),
+                   float(sta_dict[trip.start_st][3]))
+        # stx, sty = sta_dict[trip.start_st][4], sta_dict[trip.start_st][3]
+        # endx, endy = sta_dict[trip.end_st][4], sta_dict[trip.end_st][3]
+        endpt = (float(sta_dict[trip.end_st][4]),
+                 float(sta_dict[trip.end_st][3]))
+        m.drawgreatcircle(float(startpt[0]), float(startpt[1]),
+                          float(endpt[0]), float(endpt[1]),
+                          linewidth=1.5, color='pink')
+
+        current_pos = calc_pos(trip, startpt, endpt)
+        m.plot(current_pos[0], current_pos[1], marker='o',
+               markersize=5, color='#000000')
+
+    return None
+
+
+def plot_path(sta_dict, m, starts, ends):
     """
     Void func that for now, takes in sets of lats and longs and draws these routes
     """
@@ -73,74 +145,64 @@ def plot_paths(sta_dict, m, starts, ends):
                           linewidth=1.5, color='pink')
 
 
-def plot_trips(sta_dict, trips, starts, ends):
-    """
-    Func takes station_dictionary
-    List of active trips
-    """
-    for trip in range(0, len(starts)):
-        stx, sty = sta_dict[starts[trip]][4], sta_dict[starts[trip]][3]
-        endx, endy = sta_dict[ends[trip]][4], sta_dict[ends[trip]][3]
-        m.drawgreatcircle(float(stx), float(sty),
-                          float(endx), float(endy),
-                          linewidth=1.5, color='pink')
-
-
-# Initialize 'm' basemap obj
-m = Basemap(resolution='c',
-            projection='merc',
-            lat_0=59.922, lon_0=10.736,
-            llcrnrlon=10.65, llcrnrlat=59.887, urcrnrlon=10.8183, urcrnrlat=59.9558)
-
-# color in basemap
-plot_base(m)
+# def plot_trips(sta_dict, trips, time_tuple):
+#     """
+#     Func takes station_dictionary
+#     List of active trips and plots out progress at this moment
+#     """
+#     for trip in range(0, len(starts)):
+#         stx, sty = sta_dict[starts[trip]][4], sta_dict[starts[trip]][3]
+#         endx, endy = sta_dict[ends[trip]][4], sta_dict[ends[trip]][3]
+#         m.drawgreatcircle(float(stx), float(sty),
+#                           float(endx), float(endy),
+#                           linewidth=1.5, color='pink')
 
 # read stations into a hashed dict because we will be referring to them v often
 station_dict = read_stations("test.csv")
 
-# plot stations as fixed, scaled points on basemap obj
-plot_stations(station_dict, m)
 
-# draw mini trips list
-starts = ['229', '232', '226', '394', '201']
-ends = ['262', '419', '342', '402', '201']
-plot_paths(station_dict, m, starts, ends)
+# # draw mini trips list
+# starts = ['229', '232', '226', '394', '201']
+# ends = ['262', '419', '342', '402', '201']
+# plot_path(station_dict, m, starts, ends)
 
+# NAIVE WAY FORWARD
+# Iterate through trips csv
+# for each trip in correct time period:
+#     generate trip object with gcpoints (start, end, n is number of minutes)
+#
+
+# Iterate through found trips and plot path + gcpoints
 # generate plot title
-plt.title('bysykkel')
-
-# plt.gcpoints() -- calculate n points where n is # of minutes of trip
-
-# OFFSETS ARE INTERESTING HERE
-# test line perhaps x and y are gyldige trips
-# plt.quiver(x[points], y[points],
-#            u10[points], v10[points], speed[points],
-#            cmap=plt.cm.autumn)
 
 
-# plt.savefig('out.png')
+# MAIN
+for min in range(0, 20):
+    # Plot prep
+    fig, ax = plt.subplots(figsize=(20, 20))
+    plt.title('bysykkel')
+    # Initialize 'm' basemap obj
+    m = Basemap(resolution='c',
+                projection='merc',
+                lat_0=59.922, lon_0=10.736,
+                llcrnrlon=10.65, llcrnrlat=59.887, urcrnrlon=10.8183, urcrnrlat=59.9558)
 
-plt.show()
+    # color in basemap
+    plot_base(m)
 
-# def generate_objs(trips_data):
-#     """
-#     Given a trips dataframe, generate minute by minute renders
-#     """
+    # plot stations as fixed, scaled points on basemap obj
+    plot_stations(station_dict, m)
+    time_string = "2018-05-01 06:" + str(min) + ":00 +0200"
+    test_time = parser.parse(time_string)
+    results = find_trips("trips_mini_may_2018.csv", test_time)
+    if len(results) > 0:
+        print("Results: ", len(results))
+        for trip in results:
+            print(trip)
+    else:
+        print("No trips found")
+    plot_paths(station_dict, m, results, test_time)
+    plt.savefig(time_string + ".png")
+    plt.clf()   # Clear figure
 
-# def output_file(filename):
-#     # write headers
-#     with open(OUTPUT_NAME, 'w') as outfile:
-#     outfile.write(HEADERS_LINE)
-
-#     # append the rest
-#     with open(OUTPUT_NAME, 'a') as outfile:
-#         for station in jdata['stations']:
-#             line_list = [str(station['id']),
-#                          station['title'],
-#                          station['subtitle'],
-#                          str(station['number_of_locks']),
-#                          str(station['center']['latitude']),
-#                          str(station['center']['longitude'])]
-#             out_line = ",".join(line_list)
-#             out_line += '\n'
-#             outfile.write(out_line)
+# $ convert -delay 7 -loop 0 *.png animated.gif       # ImageMagick CLI - with shorter delay than spec

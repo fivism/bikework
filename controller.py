@@ -88,7 +88,7 @@ def plot_stations(sta_dict, m):
     """
     for st in sta_dict:
         x, y = float(sta_dict[st][4]), float(sta_dict[st][3])
-        size = (float(sta_dict[st][2]) / 13.0) ** 2 + 1
+        size = (float(sta_dict[st][2]) / 13.0) ** 2 + 4
         m.plot(x, y, marker='o',
                markersize=size, color='#cccccc', alpha=0.9, latlon=True)
 
@@ -106,29 +106,46 @@ def plot_paths(sta_dict, m, trips, target_time):
         and returns the "current" point
         """
         n = tdelta.relativedelta(
-            trip.end_time, trip.start_time).minutes  # total trip time in mins
-        print(n)
+            trip.end_time, trip.start_time)  # total trip time in mins
+        nmins = n.minutes
+        if n.days > 0:
+            n.hours = n.days * 24       # late deliveries
+        if n.hours > 0:
+            nmins += n.hours * 60       # also late deliveries
+        print("NPoints: " + str(nmins))
+        print("n: " + str(n))
+
         # mins of trip elapsed
-        x = tdelta.relativedelta(target_time, trip.start_time).minutes
-        print(x)
-        pt_tuples = m.gcpoints(startpt[0], startpt[1], endpt[0], endpt[1], n)
-        print(pt_tuples)
-        return (pt_tuples[0][x], pt_tuples[1][x])
+        x = tdelta.relativedelta(target_time, trip.start_time)
+        xmins = x.minutes
+        if x.hours > 0:
+            xmins += x.hours * 60
+        print("XDelta: " + str(xmins))
+        print("x: " + str(x))
+
+        if (xmins == nmins):    # prevent index erroring
+            xmins -= 1
+
+        pt_tuples = m.gcpoints(
+            startpt[0], startpt[1], endpt[0], endpt[1], nmins)
+        # print(pt_tuples)
+        return (pt_tuples[0][xmins], pt_tuples[1][xmins])
 
     for trip in trips:
-        startpt = (float(sta_dict[trip.start_st][4]),
-                   float(sta_dict[trip.start_st][3]))
-        # stx, sty = sta_dict[trip.start_st][4], sta_dict[trip.start_st][3]
-        # endx, endy = sta_dict[trip.end_st][4], sta_dict[trip.end_st][3]
-        endpt = (float(sta_dict[trip.end_st][4]),
-                 float(sta_dict[trip.end_st][3]))
-        m.drawgreatcircle(float(startpt[0]), float(startpt[1]),
-                          float(endpt[0]), float(endpt[1]),
-                          linewidth=1.5, color='pink')
+        if (trip.start_st in sta_dict) and (trip.end_st in sta_dict):
+            startpt = (float(sta_dict[trip.start_st][4]),
+                       float(sta_dict[trip.start_st][3]))
+            endpt = (float(sta_dict[trip.end_st][4]),
+                     float(sta_dict[trip.end_st][3]))
+            m.drawgreatcircle(float(startpt[0]), float(startpt[1]),
+                              float(endpt[0]), float(endpt[1]),
+                              linewidth=1.5, color='pink')
 
-        current_pos = calc_pos(trip, startpt, endpt)
-        m.plot(current_pos[0], current_pos[1], marker='o',
-               markersize=5, color='#000000')
+            current_pos = calc_pos(trip, startpt, endpt)
+            m.plot(current_pos[0], current_pos[1], marker='o',
+                   markersize=5, color='#000000')
+        else:
+            continue
 
     return None
 
@@ -144,18 +161,6 @@ def plot_path(sta_dict, m, starts, ends):
                           float(endx), float(endy),
                           linewidth=1.5, color='pink')
 
-
-# def plot_trips(sta_dict, trips, time_tuple):
-#     """
-#     Func takes station_dictionary
-#     List of active trips and plots out progress at this moment
-#     """
-#     for trip in range(0, len(starts)):
-#         stx, sty = sta_dict[starts[trip]][4], sta_dict[starts[trip]][3]
-#         endx, endy = sta_dict[ends[trip]][4], sta_dict[ends[trip]][3]
-#         m.drawgreatcircle(float(stx), float(sty),
-#                           float(endx), float(endy),
-#                           linewidth=1.5, color='pink')
 
 # read stations into a hashed dict because we will be referring to them v often
 station_dict = read_stations("test.csv")
@@ -177,12 +182,14 @@ station_dict = read_stations("test.csv")
 
 
 # MAIN
-for min in range(0, 20):
+# Get rid of this and fix incrementing
+# add divide by zero exception
+# *AND drops counting maybe by exporting the affected trips in the loop!
+for minute in range(0, 10):
     # Plot prep
     fig, ax = plt.subplots(figsize=(20, 20))
-    plt.title('bysykkel')
     # Initialize 'm' basemap obj
-    m = Basemap(resolution='c',
+    m = Basemap(resolution='f',
                 projection='merc',
                 lat_0=59.922, lon_0=10.736,
                 llcrnrlon=10.65, llcrnrlat=59.887, urcrnrlon=10.8183, urcrnrlat=59.9558)
@@ -192,9 +199,9 @@ for min in range(0, 20):
 
     # plot stations as fixed, scaled points on basemap obj
     plot_stations(station_dict, m)
-    time_string = "2018-05-01 06:" + str(min) + ":00 +0200"
+    time_string = "2018-05-01 09:" + str(minute) + ":00 +0200"
     test_time = parser.parse(time_string)
-    results = find_trips("trips_mini_may_2018.csv", test_time)
+    results = find_trips("may1.csv", test_time)
     if len(results) > 0:
         print("Results: ", len(results))
         for trip in results:
@@ -202,7 +209,8 @@ for min in range(0, 20):
     else:
         print("No trips found")
     plot_paths(station_dict, m, results, test_time)
-    plt.savefig(time_string + ".png")
+    plt.title(time_string)
+    plt.savefig("img/" + str(minute) + ".png", bbox_inches='tight')
     plt.clf()   # Clear figure
 
 # $ convert -delay 7 -loop 0 *.png animated.gif       # ImageMagick CLI - with shorter delay than spec

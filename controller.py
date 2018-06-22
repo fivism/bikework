@@ -26,6 +26,8 @@ import dateutil.relativedelta as tdelta
 # for now using DublinCore bounding box of Oslo with limits:
 # westlimit=10.649384; southlimit=59.886967; eastlimit=10.818299; northlimit=59.955795
 
+error_trips = []  # debugging quarantine
+
 
 def find_trips(filename, target_time):
     """
@@ -95,13 +97,13 @@ def plot_stations(sta_dict, m):
 def plot_paths(sta_dict, m, trips, target_time):
     """
     Examines trip start and stop stations and generates
-    straight line paths + 
+    straight line paths +
     interpolated position given target_time
     """
     def calc_pos(trip, startpt, endpt):
         """
-        Takes trip object + start and end (x, y) tuples 
-        and generates n-minutes of points 
+        Takes trip object + start and end (x, y) tuples
+        and generates n-minutes of points
         and returns the "current" point
         """
         n = tdelta.relativedelta(
@@ -132,6 +134,8 @@ def plot_paths(sta_dict, m, trips, target_time):
 
     for trip in trips:
         if (trip.start_st in sta_dict) and (trip.end_st in sta_dict):
+            # Check that start and end exist in our station reference
+            # if not, discard
             startpt = (float(sta_dict[trip.start_st][4]),
                        float(sta_dict[trip.start_st][3]))
             endpt = (float(sta_dict[trip.end_st][4]),
@@ -139,8 +143,12 @@ def plot_paths(sta_dict, m, trips, target_time):
             m.drawgreatcircle(float(startpt[0]), float(startpt[1]),
                               float(endpt[0]), float(endpt[1]),
                               linewidth=1.5, color='pink')
-
-            current_pos = calc_pos(trip, startpt, endpt)
+            try:
+                current_pos = calc_pos(trip, startpt, endpt)
+            except ZeroDivisionError as e:
+                print("Got ZeroDE on Trip:", str(trip))
+                error_trips.append(trip)
+                continue
             m.plot(current_pos[0], current_pos[1], marker='o',
                    markersize=5, color='#000000')
         else:
@@ -168,12 +176,13 @@ station_dict = read_stations("test.csv")
 # Get rid of this and fix incrementing
 # add divide by zero exception
 # *AND drops counting maybe by exporting the affected trips in the loop!
-for minute in range(0, 10):
+
+for minute in range(0, 60):
     # Plot prep
     fig, ax = plt.subplots(figsize=(20, 20))
     # Initialize 'm' basemap obj
-    m = Basemap(resolution='l',
-                projection='merc', i
+    m = Basemap(resolution='h',
+                projection='merc',
                 lat_0=59.922, lon_0=10.736,
                 llcrnrlon=10.65, llcrnrlat=59.887, urcrnrlon=10.8183, urcrnrlat=59.9558)
 
@@ -182,7 +191,7 @@ for minute in range(0, 10):
 
     # plot stations as fixed, scaled points on basemap obj
     plot_stations(station_dict, m)
-    time_string = "2018-05-01 09:" + str(minute) + ":00 +0200"
+    time_string = "2018-05-01 15:" + "{:0>2d}".format(minute) + ":00 +0200"
     test_time = parser.parse(time_string)
     results = find_trips("may1.csv", test_time)
     if len(results) > 0:
@@ -193,7 +202,8 @@ for minute in range(0, 10):
         print("No trips found")
     plot_paths(station_dict, m, results, test_time)
     plt.title(time_string)
-    plt.savefig("img/" + str(minute) + ".png", bbox_inches='tight')
+    plt.savefig("img/" + "{:0>4d}".format(minute) +
+                ".png", bbox_inches='tight')
     plt.clf()   # Clear figure
 
 # Animation workflow sample

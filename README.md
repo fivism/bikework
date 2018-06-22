@@ -12,3 +12,4 @@ between Oslo Bysykkel bikeracks.
 - [x] automate merging of usage data + latlongs
 - [x] render trip vectors
 - [ ] animation workflow
+- [ ] evaluate translation to mplleaflet to speed up processing

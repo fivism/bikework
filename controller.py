@@ -19,7 +19,6 @@ import dateutil.relativedelta as tdelta
 # if len(sys.argv) < 3:
 #     sys.exit('Usage: %s trip_csv_file output' % sys.argv[0])
 
-# TRIP_FILE = sys.argv[1]
 # OUTPUT_NAME = sys.argv[2]
 
 # trip_df = pandas.read_csv(TRIP_FILE)
@@ -165,22 +164,6 @@ def plot_path(sta_dict, m, starts, ends):
 # read stations into a hashed dict because we will be referring to them v often
 station_dict = read_stations("test.csv")
 
-
-# # draw mini trips list
-# starts = ['229', '232', '226', '394', '201']
-# ends = ['262', '419', '342', '402', '201']
-# plot_path(station_dict, m, starts, ends)
-
-# NAIVE WAY FORWARD
-# Iterate through trips csv
-# for each trip in correct time period:
-#     generate trip object with gcpoints (start, end, n is number of minutes)
-#
-
-# Iterate through found trips and plot path + gcpoints
-# generate plot title
-
-
 # MAIN
 # Get rid of this and fix incrementing
 # add divide by zero exception
@@ -189,8 +172,8 @@ for minute in range(0, 10):
     # Plot prep
     fig, ax = plt.subplots(figsize=(20, 20))
     # Initialize 'm' basemap obj
-    m = Basemap(resolution='f',
-                projection='merc',
+    m = Basemap(resolution='l',
+                projection='merc', i
                 lat_0=59.922, lon_0=10.736,
                 llcrnrlon=10.65, llcrnrlat=59.887, urcrnrlon=10.8183, urcrnrlat=59.9558)
 
@@ -213,4 +196,14 @@ for minute in range(0, 10):
     plt.savefig("img/" + str(minute) + ".png", bbox_inches='tight')
     plt.clf()   # Clear figure
 
+# Animation workflow sample
+# counter = 0                                         # Frame counter
+
+# for t in t_space:
+#     y = f(x, t)
+#     lines[0].set_ydata(y)
+#     plt.legend(['t=%4.2f' % t])                     # t changes every frame; update
+#     plt.draw()
+#     plt.savefig('tmp_%03d.png' % counter)
+#     counter += 1
 # $ convert -delay 7 -loop 0 *.png animated.gif       # ImageMagick CLI - with shorter delay than spec

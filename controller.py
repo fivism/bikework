@@ -2,31 +2,41 @@
 Controller reads through cleaned trip references and generates the
 minute-by-minute renderings of all trips in progress
 """
-# import time
 import matplotlib.pyplot as plt
 import matplotlib.cm
 from mpl_toolkits.basemap import Basemap
 from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
 from matplotlib.colors import Normalize
-from trip_obj import Trip
 import pandas as pd
 import sys
 import csv
 from dateutil import parser
 import dateutil.relativedelta as tdelta
+import copy
+from trip_obj import Trip
 
-# if len(sys.argv) < 3:
-#     sys.exit('Usage: %s trip_csv_file output' % sys.argv[0])
+if len(sys.argv) < 2:
+    sys.exit('Usage: %s trip_csv_file' % sys.argv[0])
 
-# OUTPUT_NAME = sys.argv[2]
+TRIP_FILE = sys.argv[1]
 
-# trip_df = pandas.read_csv(TRIP_FILE)
-# center 59.922056, 10.736092
-# for now using DublinCore bounding box of Oslo with limits:
-# westlimit=10.649384; southlimit=59.886967; eastlimit=10.818299; northlimit=59.955795
+"""
+DEBUG SETTINGS
+"""
+SHOW_BAD_TRIPS = True
+DEBUG_MODE = True
+error_trips = []  # bad trip quarantine
 
-error_trips = []  # debugging quarantine
+"""
+BASEMAP CONSTANTS FOR OSLO BYSYKKEL
+(DublinCore format)
+"""
+M_CENTER_LAT, M_CENTER_LON = 59.922056, 10.736092
+W_LIM, S_LIM, E_LIM, N_LIM = 10.649384, 59.886967, 10.818299, 59.955795
+
+if DEBUG_MODE:
+    print("VERBOSE MODE")
 
 
 def find_trips(filename, target_time):
@@ -146,7 +156,8 @@ def plot_paths(sta_dict, m, trips, target_time):
             try:
                 current_pos = calc_pos(trip, startpt, endpt)
             except ZeroDivisionError as e:
-                print("Got ZeroDE on Trip:", str(trip))
+                if DEBUG_MODE:
+                    print("Got ZeroDE on Trip:", str(trip))
                 error_trips.append(trip)
                 continue
             m.plot(current_pos[0], current_pos[1], marker='o',
@@ -174,46 +185,45 @@ station_dict = read_stations("test.csv")
 
 # MAIN
 # Get rid of this and fix incrementing
-# add divide by zero exception
 # *AND drops counting maybe by exporting the affected trips in the loop!
+# add drops reporting
+
+# Make the official basemap which we'll recopy for every new frame
+# but not render from scratch
+m = Basemap(resolution='h',
+            projection='merc',
+            lat_0=59.922, lon_0=10.736,
+            llcrnrlon=W_LIM, llcrnrlat=S_LIM, urcrnrlon=E_LIM, urcrnrlat=N_LIM)
 
 for minute in range(0, 60):
     # Plot prep
     fig, ax = plt.subplots(figsize=(20, 20))
-    # Initialize 'm' basemap obj
-    m = Basemap(resolution='h',
-                projection='merc',
-                lat_0=59.922, lon_0=10.736,
-                llcrnrlon=10.65, llcrnrlat=59.887, urcrnrlon=10.8183, urcrnrlat=59.9558)
 
+    # NAIVE: Copy the pre-rendered tmp_m object
+    tmp_m = copy.copy(m)
     # color in basemap
-    plot_base(m)
+    plot_base(tmp_m)
 
     # plot stations as fixed, scaled points on basemap obj
-    plot_stations(station_dict, m)
+    plot_stations(station_dict, tmp_m)
     time_string = "2018-05-01 15:" + "{:0>2d}".format(minute) + ":00 +0200"
     test_time = parser.parse(time_string)
-    results = find_trips("may1.csv", test_time)
+    results = find_trips(TRIP_FILE, test_time)
     if len(results) > 0:
         print("Results: ", len(results))
         for trip in results:
             print(trip)
     else:
         print("No trips found")
-    plot_paths(station_dict, m, results, test_time)
+    plot_paths(station_dict, tmp_m, results, test_time)
     plt.title(time_string)
     plt.savefig("img/" + "{:0>4d}".format(minute) +
                 ".png", bbox_inches='tight')
     plt.clf()   # Clear figure
 
-# Animation workflow sample
-# counter = 0                                         # Frame counter
-
-# for t in t_space:
-#     y = f(x, t)
-#     lines[0].set_ydata(y)
-#     plt.legend(['t=%4.2f' % t])                     # t changes every frame; update
-#     plt.draw()
-#     plt.savefig('tmp_%03d.png' % counter)
-#     counter += 1
-# $ convert -delay 7 -loop 0 *.png animated.gif       # ImageMagick CLI - with shorter delay than spec
+# Print out exception'd trips from quarantine
+# Assume these are mostly trips less than one minute in duration
+if SHOW_BAD_TRIPS:
+    print("\nThe following trips generated ZeroDivisionError exceptions:")
+    for trip in error_trips:
+        print(trip)

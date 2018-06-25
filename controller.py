@@ -14,6 +14,7 @@ import csv
 from dateutil import parser
 import dateutil.relativedelta as tdelta
 import copy
+import time     # just used for function benchmarking
 from trip_obj import Trip
 
 if len(sys.argv) < 2:
@@ -25,8 +26,9 @@ TRIP_FILE = sys.argv[1]
 DEBUG SETTINGS
 """
 SHOW_BAD_TRIPS = True
-DEBUG_MODE = True
+DEBUG_MODE = False
 error_trips = []  # bad trip quarantine
+SHOW_LONG_TRIPS = True  # TODO show trips longer than 45 min
 
 """
 BASEMAP CONSTANTS FOR OSLO BYSYKKEL
@@ -36,7 +38,7 @@ M_CENTER_LAT, M_CENTER_LON = 59.922056, 10.736092
 W_LIM, S_LIM, E_LIM, N_LIM = 10.649384, 59.886967, 10.818299, 59.955795
 
 if DEBUG_MODE:
-    print("VERBOSE MODE")
+    print("DEBUG MODE")
 
 
 def find_trips(filename, target_time):
@@ -123,23 +125,25 @@ def plot_paths(sta_dict, m, trips, target_time):
             n.hours = n.days * 24       # late deliveries
         if n.hours > 0:
             nmins += n.hours * 60       # also late deliveries
-        print("NPoints: " + str(nmins))
-        print("n: " + str(n))
 
         # mins of trip elapsed
         x = tdelta.relativedelta(target_time, trip.start_time)
         xmins = x.minutes
         if x.hours > 0:
             xmins += x.hours * 60
-        print("XDelta: " + str(xmins))
-        print("x: " + str(x))
 
         if (xmins == nmins):    # prevent index erroring
             xmins -= 1
 
+        # consider pushing this out
+        if DEBUG_MODE:
+            print("\nN (total) points: " + str(nmins))
+            print("n: " + str(n))
+            print("XDelta: " + str(xmins))
+            print("x: " + str(x))
+
         pt_tuples = m.gcpoints(
             startpt[0], startpt[1], endpt[0], endpt[1], nmins)
-        # print(pt_tuples)
         return (pt_tuples[0][xmins], pt_tuples[1][xmins])
 
     for trip in trips:
@@ -190,12 +194,15 @@ station_dict = read_stations("test.csv")
 
 # Make the official basemap which we'll recopy for every new frame
 # but not render from scratch
-m = Basemap(resolution='h',
+m = Basemap(resolution='c',
             projection='merc',
             lat_0=59.922, lon_0=10.736,
             llcrnrlon=W_LIM, llcrnrlat=S_LIM, urcrnrlon=E_LIM, urcrnrlat=N_LIM)
 
 for minute in range(0, 60):
+    # Start timing for benchmarking
+    start_time = time.time()
+
     # Plot prep
     fig, ax = plt.subplots(figsize=(20, 20))
 
@@ -209,17 +216,24 @@ for minute in range(0, 60):
     time_string = "2018-05-01 15:" + "{:0>2d}".format(minute) + ":00 +0200"
     test_time = parser.parse(time_string)
     results = find_trips(TRIP_FILE, test_time)
-    if len(results) > 0:
-        print("Results: ", len(results))
-        for trip in results:
-            print(trip)
-    else:
-        print("No trips found")
+
+    if DEBUG_MODE:
+        if len(results) > 0:
+            print("Results: ", len(results))
+            for trip in results:
+                print(trip)
+        else:
+            print("No trips found")
+
     plot_paths(station_dict, tmp_m, results, test_time)
     plt.title(time_string)
     plt.savefig("img/" + "{:0>4d}".format(minute) +
                 ".png", bbox_inches='tight')
     plt.clf()   # Clear figure
+
+    print("---Processed minute %s in %s seconds ---" %
+          (time_string, (time.time() - start_time)))
+
 
 # Print out exception'd trips from quarantine
 # Assume these are mostly trips less than one minute in duration

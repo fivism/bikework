@@ -92,6 +92,11 @@ def plot_base(m):
     m.drawmapboundary(fill_color='#46bcec')
     m.fillcontinents(color='#f2f2f2', lake_color='#46bcec')
     m.drawcoastlines()
+    m.drawrivers(linewidth=0.5, linestyle='solid', color='k',
+                 antialiased=1, ax=None, zorder=None)
+
+    # m.readshapefile('street_redux/street_redux', oslo_roads, drawbounds=True, zorder=100,
+    #                 linewidth=0.5, color='k', antialiased=1, ax=None, default_encoding='utf-8')
 
 
 def plot_stations(sta_dict, m):
@@ -194,45 +199,52 @@ station_dict = read_stations("test.csv")
 
 # Make the official basemap which we'll recopy for every new frame
 # but not render from scratch
+oslo_roads = ""
 m = Basemap(resolution='c',
             projection='merc',
             lat_0=59.922, lon_0=10.736,
             llcrnrlon=W_LIM, llcrnrlat=S_LIM, urcrnrlon=E_LIM, urcrnrlat=N_LIM)
 
-for minute in range(0, 60):
-    # Start timing for benchmarking
-    start_time = time.time()
 
-    # Plot prep
-    fig, ax = plt.subplots(figsize=(20, 20))
+counter = 0
+for hour in range(10, 11):
+    for minute in range(0, 10):
+        # Start timing for benchmarking
+        start_time = time.time()
 
-    # NAIVE: Copy the pre-rendered tmp_m object
-    tmp_m = copy.copy(m)
-    # color in basemap
-    plot_base(tmp_m)
+        # Plot prep
+        fig, ax = plt.subplots(figsize=(20, 20))
 
-    # plot stations as fixed, scaled points on basemap obj
-    plot_stations(station_dict, tmp_m)
-    time_string = "2018-05-01 15:" + "{:0>2d}".format(minute) + ":00 +0200"
-    test_time = parser.parse(time_string)
-    results = find_trips(TRIP_FILE, test_time)
+        # NAIVE: Copy the pre-rendered tmp_m object
+        tmp_m = copy.copy(m)
+        # color in basemap
+        plot_base(tmp_m)
 
-    if DEBUG_MODE:
-        if len(results) > 0:
-            print("Results: ", len(results))
-            for trip in results:
-                print(trip)
-        else:
-            print("No trips found")
+        # plot stations as fixed, scaled points on basemap obj
+        plot_stations(station_dict, tmp_m)
+        time_string = "2018-05-01 " + \
+            "{:0>2d}".format(hour) + ":" + \
+            "{:0>2d}".format(minute) + ":00 +0200"
+        test_time = parser.parse(time_string)
+        results = find_trips(TRIP_FILE, test_time)
 
-    plot_paths(station_dict, tmp_m, results, test_time)
-    plt.title(time_string)
-    plt.savefig("img/" + "{:0>4d}".format(minute) +
-                ".png", bbox_inches='tight')
-    plt.clf()   # Clear figure
+        if DEBUG_MODE:
+            if len(results) > 0:
+                print("Results: ", len(results))
+                for trip in results:
+                    print(trip)
+            else:
+                print("No trips found")
 
-    print("---Processed minute %s in %s seconds ---" %
-          (time_string, (time.time() - start_time)))
+        plot_paths(station_dict, tmp_m, results, test_time)
+        plt.title(time_string)
+        plt.savefig("img/" + "{:0>4d}".format(counter) +
+                    ".png", bbox_inches='tight')
+        plt.clf()   # Clear figure
+
+        counter += 1
+        print("---Processed minute %s in %2.3f seconds ---" %
+              (time_string, (time.time() - start_time)))
 
 
 # Print out exception'd trips from quarantine

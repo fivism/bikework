@@ -92,11 +92,10 @@ def plot_base(m):
     m.drawmapboundary(fill_color='#46bcec')
     m.fillcontinents(color='#f2f2f2', lake_color='#46bcec')
     m.drawcoastlines()
-    m.drawrivers(linewidth=0.5, linestyle='solid', color='k',
-                 antialiased=1, ax=None, zorder=None)
-
-    # m.readshapefile('street_redux/street_redux', oslo_roads, drawbounds=True, zorder=100,
-    #                 linewidth=0.5, color='k', antialiased=1, ax=None, default_encoding='utf-8')
+    # m.drawrivers(linewidth=19, linestyle='solid', color='k',
+    #              antialiased=1, zorder=None) # Akerselva not visible on this layer
+    m.readshapefile('street_redux/street_redux', oslo_roads, drawbounds=True, zorder=None,
+                    linewidth=1, color='#cccccc', antialiased=1, ax=None, default_encoding='utf-8')
 
 
 def plot_stations(sta_dict, m):
@@ -194,15 +193,13 @@ station_dict = read_stations("test.csv")
 
 # MAIN
 # Get rid of this and fix incrementing
-# *AND drops counting maybe by exporting the affected trips in the loop!
-# add drops reporting
 
 # Make the official basemap which we'll recopy for every new frame
 # but not render from scratch
 oslo_roads = ""
-m = Basemap(resolution='c',
+m = Basemap(resolution='f',
             projection='merc',
-            lat_0=59.922, lon_0=10.736,
+            lat_0=M_CENTER_LAT, lon_0=M_CENTER_LON,
             llcrnrlon=W_LIM, llcrnrlat=S_LIM, urcrnrlon=E_LIM, urcrnrlat=N_LIM)
 
 
@@ -243,7 +240,7 @@ for hour in range(10, 11):
         plt.clf()   # Clear figure
 
         counter += 1
-        print("---Processed minute %s in %2.3f seconds ---" %
+        print("--- Processed [minute]slice %s in %2.3f seconds ---" %
               (time_string, (time.time() - start_time)))
 
 

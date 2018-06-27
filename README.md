@@ -8,9 +8,9 @@ between Oslo Bysykkel bikeracks.
 # TODO
 - [x] scrape coords out of station status feed
 - [x] trip objects succesfully created from trip data
-- [ ] 1080 minute-collections per day generated
+- [x] 1080 minute-collections per day generated
 - [x] automate merging of usage data + latlongs
 - [x] render trip vectors
-- [ ] animation workflow
+- [x] animation workflow
 - [ ] collect one day of station data to try and mash together
 - [ ] evaluate translation to mplleaflet to speed up processing

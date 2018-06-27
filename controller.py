@@ -29,6 +29,7 @@ SHOW_BAD_TRIPS = True
 DEBUG_MODE = False
 error_trips = []  # bad trip quarantine
 SHOW_LONG_TRIPS = True  # TODO show trips longer than 45 min
+SHOW_ROADS = False
 
 """
 BASEMAP CONSTANTS FOR OSLO BYSYKKEL
@@ -94,8 +95,9 @@ def plot_base(m):
     m.drawcoastlines()
     # m.drawrivers(linewidth=19, linestyle='solid', color='k',
     #              antialiased=1, zorder=None) # Akerselva not visible on this layer
-    m.readshapefile('street_redux/street_redux', oslo_roads, drawbounds=True, zorder=None,
-                    linewidth=1, color='#cccccc', antialiased=1, ax=None, default_encoding='utf-8')
+    if SHOW_ROADS:
+        m.readshapefile('street_redux/street_redux', oslo_roads, drawbounds=True, zorder=None,
+                      linewidth=1, color='#cccccc', antialiased=1, ax=None, default_encoding='utf-8')
 
 
 def plot_stations(sta_dict, m):

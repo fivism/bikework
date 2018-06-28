@@ -97,7 +97,7 @@ def plot_base(m):
     #              antialiased=1, zorder=None) # Akerselva not visible on this layer
     if SHOW_ROADS:
         m.readshapefile('street_redux/street_redux', oslo_roads, drawbounds=True, zorder=None,
-                      linewidth=1, color='#cccccc', antialiased=1, ax=None, default_encoding='utf-8')
+                        linewidth=1, color='#cccccc', antialiased=1, ax=None, default_encoding='utf-8')
 
 
 def plot_stations(sta_dict, m):
@@ -118,40 +118,6 @@ def plot_paths(sta_dict, m, trips, target_time):
     straight line paths +
     interpolated position given target_time
     """
-    def calc_pos(trip, startpt, endpt):
-        """
-        Takes trip object + start and end (x, y) tuples
-        and generates n-minutes of points
-        and returns the "current" point
-        """
-        n = tdelta.relativedelta(
-            trip.end_time, trip.start_time)  # total trip time in mins
-        nmins = n.minutes
-        if n.days > 0:
-            n.hours = n.days * 24       # late deliveries
-        if n.hours > 0:
-            nmins += n.hours * 60       # also late deliveries
-
-        # mins of trip elapsed
-        x = tdelta.relativedelta(target_time, trip.start_time)
-        xmins = x.minutes
-        if x.hours > 0:
-            xmins += x.hours * 60
-
-        if (xmins == nmins):    # prevent index erroring
-            xmins -= 1
-
-        # consider pushing this out
-        if DEBUG_MODE:
-            print("\nN (total) points: " + str(nmins))
-            print("n: " + str(n))
-            print("XDelta: " + str(xmins))
-            print("x: " + str(x))
-
-        pt_tuples = m.gcpoints(
-            startpt[0], startpt[1], endpt[0], endpt[1], nmins)
-        return (pt_tuples[0][xmins], pt_tuples[1][xmins])
-
     for trip in trips:
         if (trip.start_st in sta_dict) and (trip.end_st in sta_dict):
             # Check that start and end exist in our station reference

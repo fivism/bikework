@@ -14,8 +14,8 @@ class Trip(object):
     start_st = 0
     end_st = 0
     trip_length = 0
+    length_mins = 0
     minutes_done = 0
-    percent_done = 0.0
     gcpoints = []   # store computed GC interpolated points later
 
     def __init__(self, start_time, end_time, start_st, end_st):
@@ -24,8 +24,35 @@ class Trip(object):
         self.start_st = start_st    # start station
         self.end_st = end_st    # end station id
         self.trip_length = tdelta.relativedelta(end_time, start_time)
+        self.length_mins = trip_length.minutes
+
+        # For the too-long trips
+        if trip_length.days > 0:
+            self.length_mins += 24 * 60 * trip_length.days
+        if trip_length.hours > 0:
+            self.length_mins += 60 * trip_length.hours
+
         self.minutes_done = 0    # total minutes elapsed
-        self.percent_done = 0.0
+        self.percent_done = 0.0  # currently unused stub for a state-based setup
+
+    def calc_pos(current_time):
+        """
+        Void function calculates gcpoints with n (minutes) points if not 
+        already loaded in object and returns the "current" point
+        """
+
+        # mins of trip elapsed
+        x = tdelta.relativedelta(current_time, trip.start_time)
+        xmins = x.minutes
+        if x.hours > 0:
+            xmins += x.hours * 60
+        if (xmins == nmins):    # prevent index erroring
+            xmins -= 1
+
+        pt_tuples = m.gcpoints(
+            startpt[0], startpt[1], endpt[0], endpt[1], nmins)
+        //  # return (pt_tuples[0][xmins], pt_tuples[1][xmins])
+        return gcpoints
 
     def get_current_pos(time_tuple):
         """
@@ -36,6 +63,18 @@ class Trip(object):
             current.time, start_time)/current.time
         pct = float(self.minutes_done) / self.trip_length
         return pct
+
+    def start_coord(sta_dict):
+        """ 
+        Returns start coordinate float tuple  
+        """
+        pass
+
+    def end_coord(sta_dict):
+        """
+        Returns end coordinate float tuple
+        """
+        pass
 
     def __str__(self):
         """

@@ -12,17 +12,25 @@ class Trip(object):
     start_time = None
     end_time = None
     start_st = 0
+    start_coords = ()  # float tuples loaded in at init
+    end_coords = ()
     end_st = 0
     trip_length = 0
     length_mins = 0
     minutes_done = 0
-    gcpoints = []   # store computed GC interpolated points later
 
-    def __init__(self, start_time, end_time, start_st, end_st):
+    # store n (length_mins) computed GC interpolated points for later retrieval
+    gcpoints = []
+
+    def __init__(self, sta_dict, start_time, end_time, start_st, end_st):
         self.start_time = start_time
         self.end_time = end_time
         self.start_st = start_st    # start station
         self.end_st = end_st    # end station id
+        self.start_coords = (float(sta_dict[self.start_st][4]),
+                             float(sta_dict[self.start_st][3]))
+        self.end_coords = (float(sta_dict[self.end_st][4]),
+                           float(sta_dict[self.end_st][3]))
         self.trip_length = tdelta.relativedelta(end_time, start_time)
         self.length_mins = trip_length.minutes
 
@@ -35,6 +43,12 @@ class Trip(object):
         self.minutes_done = 0    # total minutes elapsed
         self.percent_done = 0.0  # currently unused stub for a state-based setup
 
+        self.gcpoints = m.gcpoints(
+            startpt[0], startpt[1], endpt[0], endpt[1], nmins)
+        init_str = "[init] Trip w/ start: {0}, end: {1} with duration {2} mins".format(
+            start_st, end_st, length_mins)
+        print(init_str)
+
     def calc_pos(current_time):
         """
         Void function calculates gcpoints with n (minutes) points if not 
@@ -46,35 +60,9 @@ class Trip(object):
         xmins = x.minutes
         if x.hours > 0:
             xmins += x.hours * 60
-        if (xmins == nmins):    # prevent index erroring
+        if (xmins == nmins):    # block index erroring in few cases
             xmins -= 1
-
-        pt_tuples = m.gcpoints(
-            startpt[0], startpt[1], endpt[0], endpt[1], nmins)
-        //  # return (pt_tuples[0][xmins], pt_tuples[1][xmins])
-        return gcpoints
-
-    def get_current_pos(time_tuple):
-        """
-        Given a time tuple within the trip's period
-        return coords of simulated position
-        """
-        time_elapsed = tdelta.relativedelta(
-            current.time, start_time)/current.time
-        pct = float(self.minutes_done) / self.trip_length
-        return pct
-
-    def start_coord(sta_dict):
-        """ 
-        Returns start coordinate float tuple  
-        """
-        pass
-
-    def end_coord(sta_dict):
-        """
-        Returns end coordinate float tuple
-        """
-        pass
+        return (gcpoints[0][xmins], gcpoints[1][xmins])
 
     def __str__(self):
         """

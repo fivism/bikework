@@ -45,7 +45,7 @@ if DEBUG_MODE:
 def find_trips(filename, target_time):
     """
     Iterates through trip data CSV files for trips that are alive at
-    target_time. Returns list of initialized *trip_objs*
+    target_time. Returns list of confirmed-initialized *trip_objs*
     """
     trip_list = []
 
@@ -122,10 +122,7 @@ def plot_paths(sta_dict, m, trips, target_time):
         if (trip.start_st in sta_dict) and (trip.end_st in sta_dict):
             # Check that start and end exist in our station reference
             # if not, discard
-            startpt = (float(sta_dict[trip.start_st][4]),
-                       float(sta_dict[trip.start_st][3]))
-            endpt = (float(sta_dict[trip.end_st][4]),
-                     float(sta_dict[trip.end_st][3]))
+            # TODO refer to trip's built-in coords instead
             m.drawgreatcircle(float(startpt[0]), float(startpt[1]),
                               float(endpt[0]), float(endpt[1]),
                               linewidth=1.5, color='pink')

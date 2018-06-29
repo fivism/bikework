@@ -25,7 +25,6 @@ TRIP_FILE = sys.argv[1]
 """
 DEBUG SETTINGS
 """
-
 SHOW_BAD_TRIPS = True
 DEBUG_MODE = True
 error_trips = []  # bad trip quarantine
@@ -33,6 +32,7 @@ SHOW_LONG_TRIPS = True  # TODO show trips longer than 45 min
 SHOW_ROADS = False
 if DEBUG_MODE:
     print("DEBUG MODE")
+
 
 """
 BASEMAP CONSTANTS FOR OSLO BYSYKKEL
@@ -62,14 +62,17 @@ def find_trips(sta_dict, m, filename, target_time):
         and returns the obj
         """
         # IF NOT IN dict, initialize and add it to dict
-        if (csv_line not in trip_dict):
+        # TODO reverse logic here
+        csv_string = ''.join(csv_line)
+        if (csv_string not in trip_dict):
             new_trip = Trip(sta_dict, m, parser.parse(csv_line[1]),
                             parser.parse(csv_line[3]),
                             csv_line[0],
                             csv_line[2])
-            trip_dict[csv_line] = new_trip
+            trip_dict[csv_string] = new_trip
+            return new_trip
         else:
-            pass
+            return trip_dict[csv_string]
 
     with open(filename, mode='r') as infile:
         infile_noheader = infile.readlines()[1:]
@@ -80,8 +83,8 @@ def find_trips(sta_dict, m, filename, target_time):
                 break
             elif (target_time < parser.parse(row[3]) and
                   (target_time > parser.parse(row[1]))):
-                init_trip(row)
-                trip_list.append(trip_dict[row])
+                if (row[0] != row[2]):
+                    trip_list.append(init_trip(row))
 
     return trip_list
 
@@ -135,7 +138,7 @@ def plot_paths(sta_dict, m, trips, target_time):
                               trip.end_coords[0], trip.end_coords[1],
                               linewidth=1.5, color='pink')
             try:
-                current_pos = calc_pos(trip, startpt, endpt)
+                current_pos = trip.calc_pos(target_time)
             except ZeroDivisionError as e:
                 if DEBUG_MODE:
                     print("Got ZeroDE on Trip:", str(trip))
@@ -215,7 +218,6 @@ for hour in range(10, 11):
         counter += 1
         print("--- Processed [minute]slice %s in %2.3f seconds ---" %
               (time_string, (time.time() - start_time)))
-
 
 # Print out exception'd trips from quarantine
 # Assume these are mostly trips less than one minute in duration

@@ -28,7 +28,7 @@ class Trip(object):
         self.start_st = start_st    # start station
         self.end_st = end_st    # end station id
 
-        # TODO add If attempt here
+        # TODO protect against bad keys here
         self.start_coords = (float(sta_dict[self.start_st][4]),
                              float(sta_dict[self.start_st][3]))
         self.end_coords = (float(sta_dict[self.end_st][4]),
@@ -44,9 +44,14 @@ class Trip(object):
 
         self.minutes_done = 0    # total minutes elapsed
         self.percent_done = 0.0  # currently unused stub for a state-based setup
+        
+        try:
+            self.gcpoints = m.gcpoints(
+                self.start_coords[0], self.start_coords[1], self.end_coords[0], self.end_coords[1], self.length_mins)
+        except ZeroDivisionError as e:
+            print("ZDE: ", e, self.length_mins)
+            raise
 
-        self.gcpoints = m.gcpoints(
-            self.start_coords[0], self.start_coords[1], self.end_coords[0], self.end_coords[1], self.length_mins)
         init_str = "[init] Trip w/ start: {0}, end: {1} with duration {2} mins".format(
             start_st, end_st, self.length_mins)
         print(init_str)

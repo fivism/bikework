@@ -25,11 +25,14 @@ TRIP_FILE = sys.argv[1]
 """
 DEBUG SETTINGS
 """
+
 SHOW_BAD_TRIPS = True
-DEBUG_MODE = False
+DEBUG_MODE = True
 error_trips = []  # bad trip quarantine
 SHOW_LONG_TRIPS = True  # TODO show trips longer than 45 min
 SHOW_ROADS = False
+if DEBUG_MODE:
+    print("DEBUG MODE")
 
 """
 BASEMAP CONSTANTS FOR OSLO BYSYKKEL
@@ -38,11 +41,14 @@ BASEMAP CONSTANTS FOR OSLO BYSYKKEL
 M_CENTER_LAT, M_CENTER_LON = 59.922056, 10.736092
 W_LIM, S_LIM, E_LIM, N_LIM = 10.649384, 59.886967, 10.818299, 59.955795
 
-if DEBUG_MODE:
-    print("DEBUG MODE")
+
+"""
+MASTER REF DICT
+"""
+trip_dict = {}
 
 
-def find_trips(filename, target_time):
+def find_trips(sta_dict, m, filename, target_time):
     """
     Iterates through trip data CSV files for trips that are alive at
     target_time. Returns list of confirmed-initialized *trip_objs*
@@ -51,15 +57,19 @@ def find_trips(filename, target_time):
 
     def init_trip(csv_line):
         """
-        Void function that dissects trip line and
+        Void function that checks trip_dict dissects trip line and
         fully initializes a new trip_obj
         and returns the obj
         """
-        new_trip = Trip(parser.parse(csv_line[1]),
-                        parser.parse(csv_line[3]),
-                        csv_line[0],
-                        csv_line[2])
-        return new_trip
+        # IF NOT IN dict, initialize and add it to dict
+        if (csv_line not in trip_dict):
+            new_trip = Trip(sta_dict, m, parser.parse(csv_line[1]),
+                            parser.parse(csv_line[3]),
+                            csv_line[0],
+                            csv_line[2])
+            trip_dict[csv_line] = new_trip
+        else:
+            pass
 
     with open(filename, mode='r') as infile:
         infile_noheader = infile.readlines()[1:]
@@ -70,7 +80,8 @@ def find_trips(filename, target_time):
                 break
             elif (target_time < parser.parse(row[3]) and
                   (target_time > parser.parse(row[1]))):
-                trip_list.append(init_trip(row))
+                init_trip(row)
+                trip_list.append(trip_dict[row])
 
     return trip_list
 
@@ -86,15 +97,12 @@ def read_stations(filename):
         reader = csv.reader(infile_noheader)
         out_dict = {rows[0]: rows[1:6] for rows in reader}
         return out_dict
-    # station_dict = pd.read_csv(filename)
 
 
 def plot_base(m):
     m.drawmapboundary(fill_color='#46bcec')
     m.fillcontinents(color='#f2f2f2', lake_color='#46bcec')
     m.drawcoastlines()
-    # m.drawrivers(linewidth=19, linestyle='solid', color='k',
-    #              antialiased=1, zorder=None) # Akerselva not visible on this layer
     if SHOW_ROADS:
         m.readshapefile('street_redux/street_redux', oslo_roads, drawbounds=True, zorder=None,
                         linewidth=1, color='#cccccc', antialiased=1, ax=None, default_encoding='utf-8')
@@ -123,8 +131,8 @@ def plot_paths(sta_dict, m, trips, target_time):
             # Check that start and end exist in our station reference
             # if not, discard
             # TODO refer to trip's built-in coords instead
-            m.drawgreatcircle(float(startpt[0]), float(startpt[1]),
-                              float(endpt[0]), float(endpt[1]),
+            m.drawgreatcircle(trip.start_coords[0], trip.start_coords[1],
+                              trip.end_coords[0], trip.end_coords[1],
                               linewidth=1.5, color='pink')
             try:
                 current_pos = calc_pos(trip, startpt, endpt)
@@ -162,7 +170,7 @@ station_dict = read_stations("test.csv")
 # Make the official basemap which we'll recopy for every new frame
 # but not render from scratch
 oslo_roads = ""
-m = Basemap(resolution='f',
+m = Basemap(resolution='c',
             projection='merc',
             lat_0=M_CENTER_LAT, lon_0=M_CENTER_LON,
             llcrnrlon=W_LIM, llcrnrlat=S_LIM, urcrnrlon=E_LIM, urcrnrlat=N_LIM)
@@ -188,7 +196,7 @@ for hour in range(10, 11):
             "{:0>2d}".format(hour) + ":" + \
             "{:0>2d}".format(minute) + ":00 +0200"
         test_time = parser.parse(time_string)
-        results = find_trips(TRIP_FILE, test_time)
+        results = find_trips(station_dict, tmp_m, TRIP_FILE, test_time)
 
         if DEBUG_MODE:
             if len(results) > 0:

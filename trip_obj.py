@@ -20,49 +20,50 @@ class Trip(object):
     minutes_done = 0
 
     # store n (length_mins) computed GC interpolated points for later retrieval
-    gcpoints = []
+    gcpoints = ()
 
-    def __init__(self, sta_dict, start_time, end_time, start_st, end_st):
+    def __init__(self, sta_dict, m, start_time, end_time, start_st, end_st):
         self.start_time = start_time
         self.end_time = end_time
         self.start_st = start_st    # start station
         self.end_st = end_st    # end station id
+
+        # TODO add If attempt here
         self.start_coords = (float(sta_dict[self.start_st][4]),
                              float(sta_dict[self.start_st][3]))
         self.end_coords = (float(sta_dict[self.end_st][4]),
                            float(sta_dict[self.end_st][3]))
         self.trip_length = tdelta.relativedelta(end_time, start_time)
-        self.length_mins = trip_length.minutes
+        self.length_mins = self.trip_length.minutes
 
         # For the too-long trips
-        if trip_length.days > 0:
-            self.length_mins += 24 * 60 * trip_length.days
-        if trip_length.hours > 0:
-            self.length_mins += 60 * trip_length.hours
+        if self.trip_length.days > 0:
+            self.length_mins += 24 * 60 * self.trip_length.days
+        if self.trip_length.hours > 0:
+            self.length_mins += 60 * self.trip_length.hours
 
         self.minutes_done = 0    # total minutes elapsed
         self.percent_done = 0.0  # currently unused stub for a state-based setup
 
         self.gcpoints = m.gcpoints(
-            startpt[0], startpt[1], endpt[0], endpt[1], nmins)
+            self.start_coords[0], self.start_coords[1], self.end_coords[0], self.end_coords[1], self.length_mins)
         init_str = "[init] Trip w/ start: {0}, end: {1} with duration {2} mins".format(
-            start_st, end_st, length_mins)
+            start_st, end_st, self.length_mins)
         print(init_str)
 
-    def calc_pos(current_time):
+    def calc_pos(self, current_time):
         """
         Void function calculates gcpoints with n (minutes) points if not 
         already loaded in object and returns the "current" point
         """
-
-        # mins of trip elapsed
-        x = tdelta.relativedelta(current_time, trip.start_time)
+        x = tdelta.relativedelta(current_time, self.start_time)
         xmins = x.minutes
         if x.hours > 0:
             xmins += x.hours * 60
-        if (xmins == nmins):    # block index erroring in few cases
+        if (xmins == self.length_mins):    # block index erroring in few cases
             xmins -= 1
-        return (gcpoints[0][xmins], gcpoints[1][xmins])
+
+        return (self.gcpoints[0][xmins], self.gcpoints[1][xmins])
 
     def __str__(self):
         """

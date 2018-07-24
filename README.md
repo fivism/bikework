@@ -14,3 +14,4 @@ between Oslo Bysykkel bikeracks.
 - [x] animation workflow
 - [ ] collect one day of station data to try and mash together
 - [ ] evaluate translation to mplleaflet to speed up processing
+- [ ] look into deal.gl

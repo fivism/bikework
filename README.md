@@ -3,7 +3,11 @@ collection of oslo bysykkel munging utilities and visualization tools
 
 Currently, this generates visualizations with 60-second resolution, interpolating rider movements
 between Oslo Bysykkel bikeracks.
-![sample image](img/2.png)
+![sample image](img/2.gif)
+ 
+# Setup
+1. Download a historic archive from Oslo Bysykkel's data warehouse
+2. Build station geomap
  
 # TODO
 - [x] scrape coords out of station status feed

@@ -7,8 +7,11 @@ between Oslo Bysykkel docking stations.
 ![sample image](img/2.gif)
  
 # Setup
-1. Download a historic archive from Oslo Bysykkel's data warehouse
-2. Build station geomap
+1. Download a historic archive from Oslo Bysykkel's [data warehouse](https://developer.oslobysykkel.no/data) (a small excerpt from May 2018 is located in this repo)
+2. Run `python controller.py [historic_data.csv]`
+3. Use frames outputted into /img as needed
+
+`run.sh` currently calls imagemagick to autoconvert these to anigifs or mp4s
  
 # TODO
 - [x] scrape coords out of station status feed

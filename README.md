@@ -2,7 +2,8 @@
 collection of oslo bysykkel munging utilities and visualization tools
 
 Currently, this generates visualizations with 60-second resolution, interpolating rider movements
-between Oslo Bysykkel bikeracks.
+between Oslo Bysykkel docking stations.
+
 ![sample image](img/2.gif)
  
 # Setup
